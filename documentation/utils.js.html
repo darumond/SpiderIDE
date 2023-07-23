@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: utils.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: utils.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import { Create } from '@mui/icons-material';
+import { createFolder, writeFile } from './node';
+import { createFile } from './node';
+import { cli } from 'webpack';
+import git from 'simple-git';
+
+const fs = require('fs');
+const { getPathFromId } = require('./tree.js')
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
+const path = require('path');
+const simpleGit = require('simple-git');
+const { config } = require('process');
+
+
+
+
+/**
+ * The function checks if a specific path exists and creates it if it doesn't.
+ * @param rootPath - The root path is the base directory where the configuration folder will be
+ * created.
+ * @returns the path to the config directory with a trailing slash.
+ */
+export function checkAndCreateConfig(rootPath) {
+  const configPath = path.join(rootPath, 'spider-ide', 'config');
+  if (!fs.existsSync(configPath)) {
+    fs.mkdirSync(configPath, { recursive: true });
+
+  } else {
+
+  }
+  return configPath + "/"
+}
+
+/**
+ * The function checks if a specific directory exists and creates it if it doesn't, then returns the
+ * path of the directory.
+ * @param rootPath - The root path is the base directory where the spider-ide folder is located.
+ * @returns the path to the "request" directory inside the "spider-ide" directory, which is created if
+ * it doesn't exist.
+ */
+export function checkAndCreateRequest(rootPath) {
+  const configPath = path.join(rootPath, 'spider-ide', 'request');
+  if (!fs.existsSync(configPath))
+    fs.mkdirSync(configPath, { recursive: true });
+  else {
+
+  }
+  return configPath + "/"
+}
+export function checkAndCreateBuild(rootPath) {
+  const configPath = path.join(rootPath, 'spider-ide', 'build');
+  // Vérifier si le chemin existe
+  if (!fs.existsSync(configPath)) {
+    // Créer le dossier config s'il n'existe pas
+    fs.mkdirSync(configPath, { recursive: true });
+
+  } else {
+
+  }
+  return configPath + "/"
+}
+
+
+let configBasic = {
+  "vhosts": [
+    {
+      "ip": "127.0.0.1",
+      "port": 8000,
+      "server_name": "localhost",
+      "root": "."
+    }
+  ]
+}
+
+
+let configReverse = {
+  "vhosts": [
+    {
+      "ip": "127.0.0.1",
+      "port": 8081,
+      "server_name": "localhost",
+      "ssl_cert": "certs/localhost.pem",
+      "ssl_key": "certs/localhost-key.pem",
+      "proxy_pass":
+      {
+        "ip": "8.8.8.8",
+        "port": 80,
+        "proxy_remove_header": [
+          "Header-Removed",
+          "HTTP_X_FORWARDED_PROTO"
+        ],
+        "proxy_set_header":
+        {
+          "Foo": "Bar2",
+          "Bar": "Foo2"
+        },
+        "set_header":
+        {
+          "Chief": "Lucas the spider"
+        },
+        "remove_header":
+          [
+            "Tiger"
+          ]
+      }
+    }
+  ]
+}
+
+
+let configHttps = {
+  "vhosts": [
+    {
+      "ip": "127.0.0.1",
+      "port": 8000,
+      "root": ".",
+      "default_file": "test.txt",
+      "server_name": "server_1",
+      "ssl_cert": "certs/server_1.pem",
+      "ssl_key": "certs/server_1-key.pem"
+    },
+  ]
+}
+
+/**
+ * The function `createCertif` creates a certificate for a specified virtual host in a given root path.
+ * @param rootPath - The `rootPath` parameter is the root directory path where the `certs` folder will
+ * be created and where the certificate will be generated.
+ * @param vhost - The `vhost` parameter is an object that contains information about the virtual host.
+ * It likely includes properties such as `server_name`, which represents the server name for which the
+ * certificate is being created.
+ */
+async function createCertif(rootPath, vhost) {
+  try {
+    const certsFolderPath = path.join(rootPath, 'certs');
+    await createFolder(certsFolderPath);
+
+    process.chdir(certsFolderPath);
+
+    await exec('export CAROOT=.');
+
+    await exec(`mkcert ${vhost["server_name"]}`);
+
+    process.chdir(rootPath);
+
+    console.log('Certificat créé avec succès !');
+  } catch (error) {
+    console.error('Erreur lors de la création du certificat :', error);
+  }
+}
+
+/**
+ * The function `CreateDefaultFiles` creates default files and SSL certificates for each virtual host
+ * specified in the configuration.
+ * @param configPath - The `configPath` parameter is the path where the configuration files will be
+ * created. It is a string representing the directory path.
+ * @param config - The `config` parameter is an object that contains the configuration settings for the
+ * vhosts. It likely has properties such as `vhosts`, `default_file`, `ssl_cert`, and `ssl_key`.
+ */
+const CreateDefaultFiles = async (configPath, config) => {
+  const vhosts = config.vhosts;
+  for (const vhost of vhosts) {
+    console.log("vhost == ", vhost);
+    if (vhost["default_file"] != undefined) {
+      const pathFile = path.join(configPath, vhost["default_file"]);
+      createFile(pathFile)
+        .then(result => {
+          console.log(result);
+        })
+        .catch(error => {
+          console.log(error);
+        });
+    }
+    if (vhost["ssl_cert"] != undefined &amp;&amp; vhost["ssl_key"] != undefined) {
+      await createCertif(configPath, vhost)
+    }
+  }
+};
+
+/**
+ * The function `createConfigFile` creates a configuration file at the specified path with the provided
+ * configuration object.
+ * @param configPath - The `configPath` parameter is the path where the config file will be created. It
+ * is a string that specifies the location and name of the file.
+ * @param config - The `config` parameter is an object that contains the configuration data that you
+ * want to write to the config file.
+ * @returns The function `createConfigFile` is returning a Promise.
+ */
+const createConfigFile = async (configPath, config) => {
+  console.log("2 createConfigFile")
+  return new Promise((resolve, reject) => {
+    createFile(configPath).then(async (e) => {
+      writeFile(configPath, JSON.stringify(config, null, 2)).then(e => {
+        resolve(e)
+      }).catch(e => reject(e))
+    }
+    ).catch(e => reject(e));
+  })
+}
+
+const SpiderManName = ["NigelMan","SpooderMan","JojoMan","KalashMan","SpiderBassem",
+"CerceauMan","LuckyMan","RisselMan","FreconMan","SpiderMan2099","SpiderManNoir",
+"SpiderManMilesMorales","SpiderCochon","SpiderFantoine"];
+
+/**
+ * The function finds a unique path by appending a random Spider-Man name to the given path and adding
+ * "-cp" if the path already exists.
+ * @param path - The `path` parameter is a string representing the current path.
+ * @returns a new path with SpiderManName appended to it, followed by a random number if the path
+ * already exists.
+ */
+function findPath(path) {
+  let newPath = path;
+  const randomIndex = Math.floor(Math.random() * SpiderManName.length);
+  newPath += "-" + SpiderManName[randomIndex]
+  while (fs.existsSync(newPath))
+    newPath += "-cp";
+  return newPath;
+}
+
+/**
+ * The function creates a configuration folder with a specified template ID and root path, and creates
+ * corresponding configuration files and default files within the folder.
+ * @param templateId - The templateId parameter is an integer that represents the index of the desired
+ * configuration template. It is used to select the appropriate configuration file and configuration
+ * data from the arrays configNames and configs.
+ * @param root - The `root` parameter is the root directory where the config folder will be created.
+ * @returns a Promise.
+ */
+export const createConfigFolder =(templateId, root) => {
+  return new Promise((resolve, reject) => {
+    const configNames = ["configBasic.json", "configHttps.json", "configReverse.json"];
+    const configs = [configBasic, configHttps, configReverse];
+    let configPath = path.join(root, configNames[templateId]);
+    configPath = findPath(configPath);
+    fs.mkdir(configPath, function (err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      const configFilePath = path.join(configPath, configNames[templateId]);
+      createConfigFile(configFilePath, configs[templateId])
+        .then(e => resolve(e))
+        .catch(err => reject(err));
+      CreateDefaultFiles(configPath, configs[templateId])
+        .then(e => resolve(e))
+        .catch(err => reject(err));
+    });
+  });
+};
+
+/**
+ * The function `parseRequest` is an asynchronous function that takes an `id`, `treeNode`, and `root`
+ * as parameters and returns a promise that resolves to the parsed JSON data from a file specified by
+ * the `id`, `treeNode`, and `root` parameters.
+ * @param id - The `id` parameter is the identifier of the file you want to parse. It is used to
+ * construct the path to the file.
+ * @param treeNode - The `treeNode` parameter is a reference to the current node in the tree structure.
+ * It represents the node from which the path to the file is being determined.
+ * @param root - The `root` parameter represents the root directory of the file system where the file
+ * is located.
+ * @returns a Promise.
+ */
+export async function parseRequest(id, treeNode, root) {
+  return new Promise((resolve, reject) => {
+    const pathFile = getPathFromId(id, treeNode, root);
+
+    if (!fs.existsSync(pathFile))
+      console.log("Wrong path!");
+    else {
+      fs.readFile(pathFile, 'utf-8', (err, data) => {
+        if (err)
+          reject(err);
+        else
+          try {
+            resolve(JSON.parse(data));
+
+          }
+          catch (e) {
+            reject(e);
+          }
+      })
+    }
+  })
+}
+
+
+/**
+ * The `addVhost` function reads a JSON file, adds a vhost to the configuration, and writes the updated
+ * configuration back to the file.
+ * @param vhost - The `vhost` parameter is an object representing a virtual host configuration. It
+ * typically contains properties such as `serverName`, `documentRoot`, `port`, etc. It is used to add a
+ * new virtual host to an existing configuration file.
+ * @param path - The `path` parameter is the file path of the JSON configuration file that you want to
+ * modify. It should be a string representing the file path on your system.
+ * @returns a Promise.
+ */
+export async function addVhost(vhost,path) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(path, 'utf-8', (err, data) => {
+      if (err)
+        reject(err);
+      else
+        try {
+          const config = JSON.parse(data);
+          config.vhosts.push(vhost);
+          fs.writeFile(path, JSON.stringify(config, null, 2), (err) => {
+            if (err)
+              reject(err);
+            else
+              resolve("Vhost added");
+          })
+        }
+        catch (e) {
+          reject(e);
+        }
+    })
+  })
+}
+
+/**
+ * The `gitStatus` function is an asynchronous function that returns the status of a Git repository
+ * located at the specified path.
+ * @param path - The `path` parameter is a string that represents the path to the local Git repository.
+ * @returns The `gitStatus` function is returning a promise.
+ */
+export async function gitStatus(path) {
+  return new Promise((resolve, reject) => {
+    simpleGit(path).status((err, status) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(status);
+      }
+    });
+  });
+}
+
+/**
+ * The `gitPull` function is an asynchronous function that uses the `simpleGit` library to perform a
+ * git pull operation on a specified path.
+ * @param path - The `path` parameter is the path to the local Git repository that you want to perform
+ * a pull operation on.
+ * @returns The `gitPull` function is returning a promise.
+ */
+export async function gitPull(path) {
+  return new Promise((resolve, reject) => {
+    simpleGit(path).pull((err, update) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(update);
+      }
+    });
+  });
+}
+
+/**
+ * The `gitAdd` function is an asynchronous function that adds files to a Git repository using the
+ * `simpleGit` library.
+ * @param path - The `path` parameter is the path to the directory or file that you want to add to the
+ * Git repository.
+ * @returns The `gitAdd` function is returning a promise.
+ */
+export async function gitAdd(path) {
+  return new Promise((resolve, reject) => {
+    simpleGit(path).add((err, add) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(add);
+      }
+    });
+  });
+}
+
+
+/**
+ * The function `gitAddAll` is an asynchronous function that adds all files in a specified path to a
+ * Git repository.
+ * @param path - The `path` parameter is the path to the directory where the Git repository is located.
+ * @returns The `gitAddAll` function is returning a promise.
+ */
+export async function gitAddAll(path) {
+  return new Promise((resolve, reject) => {
+    simpleGit(path).add('./*', (err, add) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(add);
+      }
+    });
+  });
+}
+
+
+/**
+ * The `gitCommit` function is an asynchronous function that commits changes to a Git repository at the
+ * specified path with the given commit message.
+ * @param path - The `path` parameter is the path to the local Git repository where you want to make
+ * the commit. It can be a relative or absolute path.
+ * @param message - The `message` parameter is a string that represents the commit message. It is a
+ * brief description of the changes made in the commit.
+ * @returns The `gitCommit` function is returning a promise.
+ */
+export async function gitCommit(path, message) {
+  return new Promise((resolve, reject) => {
+    simpleGit(path).commit(message, (err, commit) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(commit);
+      }
+    });
+  });
+}
+
+/**
+ * The `gitPush` function is an asynchronous function that pushes changes to a Git repository located
+ * at the specified `path`.
+ * @param path - The `path` parameter is the path to the local Git repository that you want to push to
+ * a remote repository.
+ * @returns The `gitPush` function is returning a promise.
+ */
+export async function gitPush(path) {
+  return new Promise((resolve, reject) => {
+    simpleGit(path).push((err, push) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(push);
+      }
+    });
+  });
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#CreateDefaultFiles">CreateDefaultFiles</a></li><li><a href="global.html#XMLHttpRequest">XMLHttpRequest</a></li><li><a href="global.html#addVhost">addVhost</a></li><li><a href="global.html#checkAndCreateConfig">checkAndCreateConfig</a></li><li><a href="global.html#checkAndCreateRequest">checkAndCreateRequest</a></li><li><a href="global.html#createCertif">createCertif</a></li><li><a href="global.html#createConfigFile">createConfigFile</a></li><li><a href="global.html#createConfigFolder">createConfigFolder</a></li><li><a href="global.html#createFile">createFile</a></li><li><a href="global.html#createFolder">createFolder</a></li><li><a href="global.html#deleteFolderRecursive">deleteFolderRecursive</a></li><li><a href="global.html#deleteNode">deleteNode</a></li><li><a href="global.html#findContent">findContent</a></li><li><a href="global.html#findPath">findPath</a></li><li><a href="global.html#getContent">getContent</a></li><li><a href="global.html#getPathFromId">getPathFromId</a></li><li><a href="global.html#gitAdd">gitAdd</a></li><li><a href="global.html#gitAddAll">gitAddAll</a></li><li><a href="global.html#gitCommit">gitCommit</a></li><li><a href="global.html#gitPull">gitPull</a></li><li><a href="global.html#gitPush">gitPush</a></li><li><a href="global.html#gitStatus">gitStatus</a></li><li><a href="global.html#listFilesRecursively">listFilesRecursively</a></li><li><a href="global.html#moveFile">moveFile</a></li><li><a href="global.html#parseRequest">parseRequest</a></li><li><a href="global.html#renameNode">renameNode</a></li><li><a href="global.html#transformExtensionAndType">transformExtensionAndType</a></li><li><a href="global.html#writeFile">writeFile</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Jul 07 2023 00:17:30 GMT+0200 (Central European Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+build/
+.idea/
+target/
+
+# OSX
+.DS_Store
+
+# Dependency directory
+# https://www.npmjs.org/doc/misc/npm-faq.html#should-i-check-my-node_modules-folder-into-git
+node_modules/
+.vscode/
+release/app/dist
+release/build
+src/node_modules
+.erb
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pem
+
+# Coverage directory used by tools like istanbul
+coverage
+.eslintcache
+
+npm-debug.log.*
+*.css.d.ts
+*.sass.d.ts
+*.scss.d.ts
+

@@ -1,0 +1,24 @@
+.app {
+  height: 100%;
+  margin: 0;
+}
+
+.treeRoot {
+  height: 100%;
+  margin: 0;
+}
+
+.draggingSource {
+  opacity: 0.3;
+}
+
+.dropTarget {
+  background-color: #1F2228;
+}
+
+
+ul {
+  margin-left: 0;
+  padding-left: 0;
+  list-style: none;
+}

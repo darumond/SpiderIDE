@@ -1,0 +1,57 @@
+[
+    {
+      "id": 1,
+      "parent": 0,
+      "droppable": true,
+      "text": "src"
+    },
+    {
+      "id": 2,
+      "parent": 1,
+      "droppable": false,
+      "text": "main.cc",
+      "data": {
+        "fileType": "cpp"
+      }
+    },
+    {
+      "id": 3,
+      "parent": 1,
+      "droppable": true,
+      "text": "boost"
+    },
+    {
+      "id": 4,
+      "parent": 0,
+      "droppable": true,
+      "text": "tests"
+    },
+    {
+      "id": 5,
+      "parent": 3,
+      "droppable": false,
+      "text": "server.cc",
+      "data": {
+        "fileType": "cpp"
+      }
+    },
+    {
+      "id": 6,
+      "parent": 4,
+      "droppable": false,
+      "text": "test.py",
+      "data": {
+        "fileType": "python"
+      }
+    },
+    {
+      "id": 7,
+      "parent": 0,
+      "droppable": false,
+      "text": "CMakeLists.txt",
+      "data": {
+        "fileType": "cpp"
+      }
+    }
+  ]
+  
